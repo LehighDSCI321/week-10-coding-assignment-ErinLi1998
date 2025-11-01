@@ -56,16 +56,15 @@ class SortableDigraph:
             for dest, weight in dests.items():
                 result.append(f"{src} -> {dest} ({weight})")
         return "\n".join(result)
+
     def top_sort(self):
         """Return a topologically sorted list of nodes using Kahn's algorithm."""
         in_degree = {u: 0 for u in self.nodes}
 
-        # Compute in-degrees
         for u in self.edges:
             for v in self.edges[u]:
                 in_degree[v] += 1
 
-        # Initialize queue with nodes that have zero in-degree
         queue = deque([u for u in self.nodes if in_degree[u] == 0])
         topo_order = []
 
@@ -151,7 +150,6 @@ class DAG(TraversableDigraph):
         """Add an edge and prevent cycles."""
         super().add_edge(src, dest, edge_weight)
         if self._detect_cycle():
-            # Remove the edge that caused a cycle
             del self.edges[src][dest]
             raise ValueError("Cycle detected — edge addition aborted.")
 
@@ -159,7 +157,6 @@ class DAG(TraversableDigraph):
         """Perform topological sorting using Kahn's algorithm."""
         in_degree = {u: 0 for u in self.nodes}
 
-        # Compute in-degree for each node
         for src, dests in self.edges.items():
             for dest in dests:
                 in_degree[dest] += 1
