@@ -1,36 +1,4 @@
 from collections import deque
-
-class VersatileDigraph:
-    """A versatile directed graph implementation."""
-
-    def __init__(self):
-        """Initialize the graph."""
-        self.nodes = {}
-        self.edges = {}
-
-    def add_node(self, node_id, data=None):
-        """Add a node to the graph."""
-        if node_id not in self.nodes:
-            self.nodes[node_id] = data
-            self.edges[node_id] = []
-
-    def add_edge(self, src, dest):
-        """Add a directed edge from src to dest."""
-        if src not in self.nodes:
-            self.add_node(src)
-        if dest not in self.nodes:
-            self.add_node(dest)
-        self.edges[src].append(dest)
-
-    def __str__(self):
-        """String representation of the graph."""
-        result = []
-        for src in self.edges:
-            for dest in self.edges[src]:
-                result.append(f"{src} -> {dest}")
-        return "\n".join(result)
-
-
 class SortableDigraph(VersatileDigraph):
     """Directed graph that supports topological sorting."""
 
