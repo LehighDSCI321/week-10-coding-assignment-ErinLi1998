@@ -1,21 +1,27 @@
+"""
+Implements VersatileDigraph, TraversableDigraph, and DAG classes.
+Each class supports directed graph operations, traversal, and topological sorting.
+"""
+
 from collections import deque
+
 
 class VersatileDigraph:
     """A versatile directed graph with nodes and weighted edges."""
 
     def __init__(self):
-        """Initialize nodes and edges."""
+        """Initialize the graph with empty node and edge sets."""
         self.nodes = {}   # {node_id: value}
         self.edges = {}   # {src: {dest: weight}}
 
     def add_node(self, node_id, value=None):
-        """Add a node to the graph."""
+        """Add a node to the graph if not already present."""
         if node_id not in self.nodes:
             self.nodes[node_id] = value
             self.edges[node_id] = {}
 
     def add_edge(self, src, dest, edge_weight=1):
-        """Add a directed edge from src to dest."""
+        """Add a directed edge from src to dest with an optional weight."""
         if src not in self.nodes:
             self.add_node(src)
         if dest not in self.nodes:
@@ -35,11 +41,11 @@ class VersatileDigraph:
         return self.edges.get(src, {}).get(dest, None)
 
     def successors(self, node_id):
-        """Return a list of successors for a node."""
+        """Return a list of successors (outgoing neighbors) for a node."""
         return list(self.edges.get(node_id, {}).keys())
 
     def predecessors(self, node_id):
-        """Return a list of predecessors for a node."""
+        """Return a list of predecessors (incoming neighbors) for a node."""
         preds = []
         for src in self.edges:
             if node_id in self.edges[src]:
@@ -47,19 +53,19 @@ class VersatileDigraph:
         return preds
 
     def __str__(self):
-        """Readable string representation."""
+        """Return a human-readable string representation of the graph."""
         result = []
         for src in self.edges:
-            for dest, w in self.edges[src].items():
-                result.append(f"{src} -> {dest} ({w})")
+            for dest, weight in self.edges[src].items():
+                result.append(f"{src} -> {dest} ({weight})")
         return "\n".join(result)
 
 
 class TraversableDigraph(VersatileDigraph):
-    """A directed graph with traversal methods."""
+    """A directed graph with traversal methods (BFS and DFS)."""
 
     def bfs(self, start):
-        """Breadth-first search (excluding start node)."""
+        """Perform breadth-first search (excluding the start node)."""
         visited = set()
         queue = deque([start])
         result = []
@@ -74,11 +80,12 @@ class TraversableDigraph(VersatileDigraph):
         return result
 
     def dfs(self, start):
-        """Depth-first search (excluding start node)."""
+        """Perform depth-first search (excluding the start node)."""
         visited = set()
         result = []
 
         def dfs_visit(node):
+            """Recursive helper function for DFS traversal."""
             for neighbor in self.successors(node):
                 if neighbor not in visited:
                     visited.add(neighbor)
@@ -93,27 +100,29 @@ class DAG(TraversableDigraph):
     """Directed Acyclic Graph (DAG) with topological sorting and cycle detection."""
 
     def __init__(self):
+        """Initialize an empty DAG."""
         super().__init__()
 
     def _detect_cycle(self):
-        """Detect if the graph contains a cycle (DFS-based)."""
+        """Detect if the graph contains a cycle using DFS recursion."""
         visited = set()
         rec_stack = set()
 
         def dfs(node):
+            """Recursive DFS to detect cycles."""
             visited.add(node)
             rec_stack.add(node)
             for neighbor in self.successors(node):
                 if neighbor not in visited and dfs(neighbor):
                     return True
-                elif neighbor in rec_stack:
+                if neighbor in rec_stack:
                     return True
             rec_stack.remove(node)
             return False
 
-        for n in self.nodes:
-            if n not in visited:
-                if dfs(n):
+        for node in self.nodes:
+            if node not in visited:
+                if dfs(node):
                     return True
         return False
 
@@ -121,12 +130,12 @@ class DAG(TraversableDigraph):
         """Add an edge and prevent cycles."""
         super().add_edge(src, dest, edge_weight)
         if self._detect_cycle():
-            # Remove the edge that caused the cycle
+            # Remove the edge that caused a cycle
             del self.edges[src][dest]
             raise ValueError("Cycle detected — edge addition aborted.")
 
     def top_sort(self):
-        """Topological sorting using Kahn's algorithm."""
+        """Perform topological sorting using Kahn's algorithm."""
         in_degree = {u: 0 for u in self.nodes}
 
         # Compute in-degree for each node
