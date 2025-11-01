@@ -95,5 +95,32 @@ class DAG(TraversableDigraph):
         return False
 
 
+# ------------------------------------------------------------------
+# Example / Manual Test
+# ------------------------------------------------------------------
+if __name__ == "__main__":
+    g = DAG()
+    g.add_edge("shirt", "pants")
+    g.add_edge("shirt", "belt")
+    g.add_edge("shirt", "tie")
+    g.add_edge("shirt", "vest")
+    g.add_edge("pants", "belt")
+    g.add_edge("belt", "jacket")
+    g.add_edge("tie", "jacket")
+    g.add_edge("vest", "jacket")
+    g.add_edge("socks", "shoes")
+    g.add_edge("pants", "shoes")
+    g.add_edge("shoes", "jacket")
+
+    print("Graph:", g)
+    print("DFS from shirt:", list(g.dfs("shirt")))
+    print("BFS from shirt:", list(g.bfs("shirt")))
+
+    # Attempt to create a cycle (should raise exception)
+    try:
+        g.add_edge("jacket", "shirt")
+    except ValueError as e:
+        print("Cycle prevention test passed:", e)
+
 
 
