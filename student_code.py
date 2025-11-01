@@ -23,16 +23,22 @@ class VersatileDigraph:
         self.edges[src].append(dest)
 
     def __str__(self):
-        """String representation of the graph."""
-        result = []
-        for src in self.edges:
-            for dest in self.edges[src]:
-                result.append(f"{src} -> {dest}")
-        return "\n".join(result)
+        """Return a readable string representation of the graph."""
+        output = []
+        for src in sorted(self.edges.keys()):
+            if not self.edges[src]:
+                output.append(f"{src} -> []")
+            else:
+                output.append(f"{src} -> {sorted(self.edges[src])}")
+        return "\n".join(output)
+
+    def __repr__(self):
+        """Return the internal dictionary representation."""
+        return str(self.edges)
 
 
 # ----------------------------------------------------------------
-# SortableDigraph (already provided by you)
+# SortableDigraph: adds topological sorting
 # ----------------------------------------------------------------
 class SortableDigraph(VersatileDigraph):
     """Directed graph that supports topological sorting."""
@@ -47,13 +53,13 @@ class SortableDigraph(VersatileDigraph):
                 in_degree[v] += 1
 
         # Initialize queue with nodes that have zero in-degree
-        queue = deque([u for u in self.nodes if in_degree[u] == 0])
+        queue = deque(sorted([u for u in self.nodes if in_degree[u] == 0]))
         topo_order = []
 
         while queue:
             u = queue.popleft()
             topo_order.append(u)
-            for v in self.edges.get(u, []):
+            for v in sorted(self.edges.get(u, [])):
                 in_degree[v] -= 1
                 if in_degree[v] == 0:
                     queue.append(v)
@@ -70,55 +76,61 @@ class SortableDigraph(VersatileDigraph):
 class TraversableDigraph(SortableDigraph):
     """Directed graph with DFS and BFS traversal methods."""
 
-    def dfs(self, start, visited=None):
-        """Perform a depth-first traversal starting from 'start'."""
-        if visited is None:
-            visited = set()
-        visited.add(start)
-        yield start
-        for neighbor in self.edges.get(start, []):
-            if neighbor not in visited:
-                yield from self.dfs(neighbor, visited)
+    def dfs(self, start):
+        """Perform a depth-first search traversal and return a list of visited nodes."""
+        visited = set()
+        order = []
+
+        def _dfs(node):
+            visited.add(node)
+            order.append(node)
+            for neighbor in sorted(self.edges.get(node, [])):
+                if neighbor not in visited:
+                    _dfs(neighbor)
+
+        if start in self.nodes:
+            _dfs(start)
+        return order
 
     def bfs(self, start):
-        """Perform a breadth-first traversal starting from 'start'."""
-        visited = set()
+        """Perform a breadth-first search traversal and return a list of visited nodes."""
+        if start not in self.nodes:
+            return []
+
+        visited = set([start])
+        order = []
         queue = deque([start])
-        visited.add(start)
 
         while queue:
-            v = queue.popleft()
-            yield v
-            for neighbor in self.edges.get(v, []):
+            node = queue.popleft()
+            order.append(node)
+            for neighbor in sorted(self.edges.get(node, [])):
                 if neighbor not in visited:
                     visited.add(neighbor)
                     queue.append(neighbor)
+        return order
 
 
 # ----------------------------------------------------------------
 # DAG: prevents cycles when adding edges
 # ----------------------------------------------------------------
 class DAG(TraversableDigraph):
-    """Directed Acyclic Graph (DAG) that prevents cycles."""
+    """Directed Acyclic Graph that prevents cycles."""
 
     def add_edge(self, src, dest):
         """Add edge only if it won't create a cycle."""
-        # Ensure both nodes exist
         if src not in self.nodes:
             self.add_node(src)
         if dest not in self.nodes:
             self.add_node(dest)
 
-        # Temporarily add the edge
         self.edges[src].append(dest)
 
-        # Check for cycle by attempting topological sort
+        # Check for cycle using topological sort
         try:
             self.top_sort()
         except ValueError:
-            # Revert addition and raise exception
             self.edges[src].remove(dest)
             raise ValueError(f"Adding edge {src} -> {dest} would create a cycle.")
-
 
 
