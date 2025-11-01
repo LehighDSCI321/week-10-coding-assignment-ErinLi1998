@@ -61,10 +61,12 @@ class SortableDigraph:
         """Return a topologically sorted list of nodes using Kahn's algorithm."""
         in_degree = {u: 0 for u in self.nodes}
 
+        # Compute in-degrees
         for u in self.edges:
             for v in self.edges[u]:
                 in_degree[v] += 1
 
+        # Initialize queue with zero in-degree nodes
         queue = deque([u for u in self.nodes if in_degree[u] == 0])
         topo_order = []
 
@@ -77,7 +79,9 @@ class SortableDigraph:
                     queue.append(v)
 
         if len(topo_order) != len(self.nodes):
-            raise ValueError("Graph has at least one cycle; cannot topologically sort.")
+            raise ValueError(
+                "Graph has at least one cycle; cannot topologically sort."
+            )
 
         return topo_order
 
@@ -157,6 +161,7 @@ class DAG(TraversableDigraph):
         """Perform topological sorting using Kahn's algorithm."""
         in_degree = {u: 0 for u in self.nodes}
 
+        # Compute in-degree for each node
         for src, dests in self.edges.items():
             for dest in dests:
                 in_degree[dest] += 1
@@ -173,6 +178,9 @@ class DAG(TraversableDigraph):
                     queue.append(v)
 
         if len(topo_order) != len(self.nodes):
-            raise ValueError("Graph has at least one cycle; cannot topologically sort.")
+            raise ValueError(
+                "Graph has at least one cycle; cannot topologically sort."
+            )
 
         return topo_order
+
