@@ -1,4 +1,36 @@
 from collections import deque
+
+class VersatileDigraph:
+    """A versatile directed graph implementation."""
+
+    def __init__(self):
+        """Initialize the graph."""
+        self.nodes = {}
+        self.edges = {}
+
+    def add_node(self, node_id, data=None):
+        """Add a node to the graph."""
+        if node_id not in self.nodes:
+            self.nodes[node_id] = data
+            self.edges[node_id] = []
+
+    def add_edge(self, src, dest):
+        """Add a directed edge from src to dest."""
+        if src not in self.nodes:
+            self.add_node(src)
+        if dest not in self.nodes:
+            self.add_node(dest)
+        self.edges[src].append(dest)
+
+    def __str__(self):
+        """String representation of the graph."""
+        result = []
+        for src in self.edges:
+            for dest in self.edges[src]:
+                result.append(f"{src} -> {dest}")
+        return "\n".join(result)
+
+
 class SortableDigraph(VersatileDigraph):
     """Directed graph that supports topological sorting."""
 
@@ -126,6 +158,8 @@ class DAG(TraversableDigraph):
         
         while queue:
             current = queue.popleft()
+            
+            # If we can reach src from dest, adding src->dest creates a cycle
             if current == src:
                 return True
             
@@ -136,4 +170,41 @@ class DAG(TraversableDigraph):
         
         return False
 
+
+# Example usage and testing
+if __name__ == "__main__":
+    # Test TraversableDigraph
+    print("=== Testing TraversableDigraph ===")
+    tg = TraversableDigraph()
+    tg.add_edge('A', 'B')
+    tg.add_edge('A', 'C')
+    tg.add_edge('B', 'D')
+    tg.add_edge('C', 'D')
+    
+    print("DFS from A:", list(tg.dfs('A')))
+    print("BFS from A:", list(tg.bfs('A')))
+    print("Topological sort:", tg.top_sort())
+    
+    # Test DAG - valid case
+    print("\n=== Testing DAG (valid edges) ===")
+    dag = DAG()
+    dag.add_edge('shirt', 'tie')
+    dag.add_edge('shirt', 'belt')
+    dag.add_edge('tie', 'jacket')
+    dag.add_edge('belt', 'jacket')
+    dag.add_edge('pants', 'belt')
+    dag.add_edge('pants', 'shoes')
+    dag.add_edge('socks', 'shoes')
+    
+    print("DAG edges:")
+    print(dag)
+    print("Topological sort:", dag.top_sort())
+    
+    # Test DAG - invalid case (should raise exception)
+    print("\n=== Testing DAG (cycle detection) ===")
+    try:
+        dag.add_edge('jacket', 'shirt')  # This should create a cycle
+        print("ERROR: Cycle was not detected!")
+    except ValueError as e:
+        print(f"Correctly detected cycle: {e}")
 
