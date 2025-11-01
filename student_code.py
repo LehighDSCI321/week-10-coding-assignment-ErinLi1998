@@ -1,18 +1,19 @@
-"""graph implementation module.
-Implements VersatileDigraph, TraversableDigraph, and DAG classes.
+"""Graph implementation module.
+
+Implements SortableDigraph, TraversableDigraph, and DAG classes.
 Each class supports directed graph operations, traversal, and topological sorting.
 """
 
 from collections import deque
 
 
-class VersatileDigraph:
+class SortableDigraph:
     """A versatile directed graph with nodes and weighted edges."""
 
     def __init__(self):
         """Initialize the graph with empty node and edge sets."""
-        self.nodes = {}   # {node_id: value}
-        self.edges = {}   # {src: {dest: weight}}
+        self.nodes = {}  # {node_id: value}
+        self.edges = {}  # {src: {dest: weight}}
 
     def add_node(self, node_id, value=None):
         """Add a node to the graph if not already present."""
@@ -34,11 +35,11 @@ class VersatileDigraph:
 
     def get_node_value(self, node_id):
         """Return the stored value for a node."""
-        return self.nodes.get(node_id, None)
+        return self.nodes.get(node_id)
 
     def get_edge_weight(self, src, dest):
         """Return the weight of the edge from src to dest."""
-        return self.edges.get(src, {}).get(dest, None)
+        return self.edges.get(src, {}).get(dest)
 
     def successors(self, node_id):
         """Return a list of successors (outgoing neighbors) for a node."""
@@ -46,22 +47,18 @@ class VersatileDigraph:
 
     def predecessors(self, node_id):
         """Return a list of predecessors (incoming neighbors) for a node."""
-        preds = []
-        for src in self.edges:
-            if node_id in self.edges[src]:
-                preds.append(src)
-        return preds
+        return [src for src in self.edges if node_id in self.edges[src]]
 
     def __str__(self):
         """Return a human-readable string representation of the graph."""
         result = []
-        for src in self.edges:
-            for dest, weight in self.edges[src].items():
+        for src, dests in self.edges.items():
+            for dest, weight in dests.items():
                 result.append(f"{src} -> {dest} ({weight})")
         return "\n".join(result)
 
 
-class TraversableDigraph(VersatileDigraph):
+class TraversableDigraph(SortableDigraph):
     """A directed graph with traversal methods (BFS and DFS)."""
 
     def bfs(self, start):
@@ -108,12 +105,12 @@ class DAG(TraversableDigraph):
         visited = set()
         rec_stack = set()
 
-        def dfs(node):
+        def dfs_cycle(node):
             """Recursive DFS to detect cycles."""
             visited.add(node)
             rec_stack.add(node)
             for neighbor in self.successors(node):
-                if neighbor not in visited and dfs(neighbor):
+                if neighbor not in visited and dfs_cycle(neighbor):
                     return True
                 if neighbor in rec_stack:
                     return True
@@ -121,9 +118,8 @@ class DAG(TraversableDigraph):
             return False
 
         for node in self.nodes:
-            if node not in visited:
-                if dfs(node):
-                    return True
+            if node not in visited and dfs_cycle(node):
+                return True
         return False
 
     def add_edge(self, src, dest, edge_weight=1):
@@ -139,9 +135,9 @@ class DAG(TraversableDigraph):
         in_degree = {u: 0 for u in self.nodes}
 
         # Compute in-degree for each node
-        for u in self.edges:
-            for v in self.edges[u]:
-                in_degree[v] += 1
+        for src, dests in self.edges.items():
+            for dest in dests:
+                in_degree[dest] += 1
 
         queue = deque([u for u in self.nodes if in_degree[u] == 0])
         topo_order = []
