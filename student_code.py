@@ -56,6 +56,31 @@ class SortableDigraph:
             for dest, weight in dests.items():
                 result.append(f"{src} -> {dest} ({weight})")
         return "\n".join(result)
+    def top_sort(self):
+        """Return a topologically sorted list of nodes using Kahn's algorithm."""
+        in_degree = {u: 0 for u in self.nodes}
+
+        # Compute in-degrees
+        for u in self.edges:
+            for v in self.edges[u]:
+                in_degree[v] += 1
+
+        # Initialize queue with nodes that have zero in-degree
+        queue = deque([u for u in self.nodes if in_degree[u] == 0])
+        topo_order = []
+
+        while queue:
+            u = queue.popleft()
+            topo_order.append(u)
+            for v in self.edges.get(u, []):
+                in_degree[v] -= 1
+                if in_degree[v] == 0:
+                    queue.append(v)
+
+        if len(topo_order) != len(self.nodes):
+            raise ValueError("Graph has at least one cycle; cannot topologically sort.")
+
+        return topo_order
 
 
 class TraversableDigraph(SortableDigraph):
