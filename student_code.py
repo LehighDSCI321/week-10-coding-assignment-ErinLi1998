@@ -1,116 +1,95 @@
 from collections import deque
 
 class SortableDigraph:
-    """A directed graph that supports topological sorting."""
-
+    """Basic directed graph with adjacency list representation."""
     def __init__(self):
-        """Initialize the graph with empty nodes and edges."""
-        self.nodes = {}
-        self.edges = {}
-
-    def add_node(self, node):
-        """Add a node to the graph if it does not already exist."""
-        if node not in self.nodes:
-            self.nodes[node] = None
-        if node not in self.edges:
-            self.edges[node] = set()
-
+        self.adj = {}  # {vertex: [list of neighbors]}
+    
+    def add_vertex(self, v):
+        if v not in self.adj:
+            self.adj[v] = []
+    
     def add_edge(self, start, end):
-        """Add a directed edge from start → end."""
-        if start not in self.nodes:
-            self.add_node(start)
-        if end not in self.nodes:
-            self.add_node(end)
-        if start not in self.edges:
-            self.edges[start] = set()
-        self.edges[start].add(end)
-
-    def top_sort(self):
-        """Return a topologically sorted list of nodes."""
-        visited = set()
-        stack = []
-        temp = set()
-
-        def visit(node):
-            if node in temp:
-                raise ValueError("Graph contains a cycle.")
-            if node not in visited:
-                temp.add(node)
-                for neighbor in self.edges.get(node, []):
-                    visit(neighbor)
-                temp.remove(node)
-                visited.add(node)
-                stack.append(node)
-
-        for node in self.nodes:
-            if node not in visited:
-                visit(node)
-        stack.reverse()
-        return stack
+        """Add a directed edge from start → end"""
+        self.add_vertex(start)
+        self.add_vertex(end)
+        self.adj[start].append(end)
+    
+    def vertices(self):
+        return list(self.adj.keys())
+    
+    def neighbors(self, v):
+        return self.adj.get(v, [])
+    
+    def __str__(self):
+        result = []
+        for v in self.adj:
+            result.append(f"{v} -> {self.adj[v]}")
+        return "\n".join(result)
 
 
+# ---------------------------------------------------------
+# TraversableDigraph: adds DFS and BFS traversals
+# ---------------------------------------------------------
 class TraversableDigraph(SortableDigraph):
-    """A digraph that supports DFS and BFS traversals."""
-
-    def dfs(self, start):
-        """Depth-First Search traversal that yields nodes in order."""
-        visited = set()
-
-        def visit(node):
-            if node not in visited:
-                visited.add(node)
-                yield node
-                for neighbor in self.edges.get(node, []):
-                    yield from visit(neighbor)
-
-        if start in self.nodes:
-            yield from visit(start)
-
+    """Extends SortableDigraph with DFS and BFS traversal methods."""
+    
+    def dfs(self, start, visited=None):
+        """Depth-First Search traversal."""
+        if visited is None:
+            visited = set()
+        visited.add(start)
+        yield start
+        for neighbor in self.neighbors(start):
+            if neighbor not in visited:
+                yield from self.dfs(neighbor, visited)
+    
     def bfs(self, start):
-        """Breadth-First Search traversal that yields nodes in order."""
-        if start not in self.nodes:
-            return
-        visited = set([start])
+        """Breadth-First Search traversal using deque and yield."""
+        visited = set()
         queue = deque([start])
+        visited.add(start)
+        
         while queue:
-            node = queue.popleft()
-            yield node
-            for neighbor in self.edges.get(node, []):
+            v = queue.popleft()
+            yield v
+            for neighbor in self.neighbors(v):
                 if neighbor not in visited:
                     visited.add(neighbor)
                     queue.append(neighbor)
 
 
+# ---------------------------------------------------------
+# DAG: ensures no cycles are created when adding edges
+# ---------------------------------------------------------
 class DAG(TraversableDigraph):
-    """A Directed Acyclic Graph that prevents cycles."""
-
+    """Directed Acyclic Graph that prevents cycles."""
+    
     def add_edge(self, start, end):
-        """Add an edge if it does not create a cycle."""
-        # Ensure nodes exist first
-        if start not in self.nodes:
-            self.add_node(start)
-        if end not in self.nodes:
-            self.add_node(end)
-        # Check if a path exists from end to start
+        """Add edge only if it does NOT create a cycle."""
+        # First ensure both vertices exist
+        self.add_vertex(start)
+        self.add_vertex(end)
+        
+        # Check if adding start->end would create a cycle
         if self._path_exists(end, start):
-            raise ValueError(f"Adding edge {start} → {end} would create a cycle.")
-        # Add edge if safe
-        super().add_edge(start, end)
-
-    def _path_exists(self, start, target):
-        """Return True if there is a path from start → target."""
-        if start == target:
-            return True
+            raise ValueError(f"Adding edge {start} -> {end} would create a cycle.")
+        
+        # Safe to add
+        self.adj[start].append(end)
+    
+    def _path_exists(self, src, dest):
+        """Helper: returns True if there is a path from src → dest."""
         visited = set()
-        stack = [start]
+        stack = [src]
+        
         while stack:
-            node = stack.pop()
-            if node == target:
+            v = stack.pop()
+            if v == dest:
                 return True
-            if node not in visited:
-                visited.add(node)
-                stack.extend(self.edges.get(node, []))
+            if v not in visited:
+                visited.add(v)
+                stack.extend(self.neighbors(v))
         return False
-
 
 
