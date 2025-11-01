@@ -56,69 +56,44 @@ class VersatileDigraph:
         """Return a human-readable string representation of the graph."""
         result = []
         for src in self.edges:
-            for dest in self.edges[src]:
-                weight = self.edges[src][dest]
-                result.append(f"{src} -> {dest} (weight: {weight})")
+            for dest, weight in self.edges[src].items():
+                result.append(f"{src} -> {dest} ({weight})")
         return "\n".join(result)
 
 
 class TraversableDigraph(VersatileDigraph):
-    """A graph that supports DFS and BFS traversals."""
-    
-    def dfs(self, start=None):
-        """
-        Perform depth-first search traversal of the digraph.
-        Yields nodes in DFS order.
-        """
+    """A directed graph with traversal methods (BFS and DFS)."""
+
+    def bfs(self, start):
+        """Perform breadth-first search (excluding the start node)."""
         visited = set()
-        
-        # If no start node specified, use all nodes as potential starting points
-        if start is not None:
-            nodes_to_visit = [start]
-        else:
-            nodes_to_visit = list(self.nodes.keys())
-        
-        for node in nodes_to_visit:
-            if node not in visited:
-                stack = [node]
-                visited.add(node)
-                
-                while stack:
-                    current = stack.pop()
-                    yield current
-                    
-                    # Push neighbors in reverse order to maintain DFS semantics
-                    for neighbor in reversed(self.successors(current)):
-                        if neighbor not in visited:
-                            visited.add(neighbor)
-                            stack.append(neighbor)
-    
-    def bfs(self, start=None):
-        """
-        Perform breadth-first search traversal of the digraph.
-        Yields nodes in BFS order.
-        """
+        queue = deque([start])
+        result = []
+
+        while queue:
+            node = queue.popleft()
+            for neighbor in self.successors(node):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    result.append(neighbor)
+                    queue.append(neighbor)
+        return result
+
+    def dfs(self, start):
+        """Perform depth-first search (excluding the start node)."""
         visited = set()
-        
-        # If no start node specified, use all nodes as potential starting points
-        if start is not None:
-            nodes_to_visit = [start]
-        else:
-            nodes_to_visit = list(self.nodes.keys())
-        
-        for node in nodes_to_visit:
-            if node not in visited:
-                queue = deque([node])
-                visited.add(node)
-                
-                while queue:
-                    current = queue.popleft()
-                    yield current
-                    
-                    for neighbor in self.successors(current):
-                        if neighbor not in visited:
-                            visited.add(neighbor)
-                            queue.append(neighbor)
+        result = []
+
+        def dfs_visit(node):
+            """Recursive helper function for DFS traversal."""
+            for neighbor in self.successors(node):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    result.append(neighbor)
+                    dfs_visit(neighbor)
+
+        dfs_visit(start)
+        return result
 
 
 class DAG(TraversableDigraph):
@@ -138,10 +113,9 @@ class DAG(TraversableDigraph):
             visited.add(node)
             rec_stack.add(node)
             for neighbor in self.successors(node):
-                if neighbor not in visited:
-                    if dfs(neighbor):
-                        return True
-                elif neighbor in rec_stack:
+                if neighbor not in visited and dfs(neighbor):
+                    return True
+                if neighbor in rec_stack:
                     return True
             rec_stack.remove(node)
             return False
@@ -182,5 +156,5 @@ class DAG(TraversableDigraph):
 
         if len(topo_order) != len(self.nodes):
             raise ValueError("Graph has at least one cycle; cannot topologically sort.")
-        
+
         return topo_order
