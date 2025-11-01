@@ -1,44 +1,146 @@
 from collections import deque
 
-class SortableDigraph:
-    """Directed graph that supports topological sorting and basic graph operations."""
-    
-    def __init__(self):
-        """Initialize the graph."""
-        self.nodes = {}
-        self.edges = {}
+class VersatileDigraph:
+    """A versatile directed graph with nodes and weighted edges."""
 
-    def add_node(self, node_id, data=None):
+    def __init__(self):
+        """Initialize nodes and edges."""
+        self.nodes = {}   # {node_id: value}
+        self.edges = {}   # {src: {dest: weight}}
+
+    def add_node(self, node_id, value=None):
         """Add a node to the graph."""
         if node_id not in self.nodes:
-            self.nodes[node_id] = data
-            self.edges[node_id] = []
+            self.nodes[node_id] = value
+            self.edges[node_id] = {}
 
-    def add_edge(self, src, dest):
+    def add_edge(self, src, dest, edge_weight=1):
         """Add a directed edge from src to dest."""
         if src not in self.nodes:
             self.add_node(src)
         if dest not in self.nodes:
             self.add_node(dest)
-        self.edges[src].append(dest)
+        self.edges[src][dest] = edge_weight
+
+    def get_nodes(self):
+        """Return a list of all node IDs."""
+        return list(self.nodes.keys())
+
+    def get_node_value(self, node_id):
+        """Return the stored value for a node."""
+        return self.nodes.get(node_id, None)
+
+    def get_edge_weight(self, src, dest):
+        """Return the weight of the edge from src to dest."""
+        return self.edges.get(src, {}).get(dest, None)
+
+    def successors(self, node_id):
+        """Return a list of successors for a node."""
+        return list(self.edges.get(node_id, {}).keys())
+
+    def predecessors(self, node_id):
+        """Return a list of predecessors for a node."""
+        preds = []
+        for src in self.edges:
+            if node_id in self.edges[src]:
+                preds.append(src)
+        return preds
+
+    def __str__(self):
+        """Readable string representation."""
+        result = []
+        for src in self.edges:
+            for dest, w in self.edges[src].items():
+                result.append(f"{src} -> {dest} ({w})")
+        return "\n".join(result)
+
+
+class TraversableDigraph(VersatileDigraph):
+    """A directed graph with traversal methods."""
+
+    def bfs(self, start):
+        """Breadth-first search (excluding start node)."""
+        visited = set()
+        queue = deque([start])
+        result = []
+
+        while queue:
+            node = queue.popleft()
+            for neighbor in self.successors(node):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    result.append(neighbor)
+                    queue.append(neighbor)
+        return result
+
+    def dfs(self, start):
+        """Depth-first search (excluding start node)."""
+        visited = set()
+        result = []
+
+        def dfs_visit(node):
+            for neighbor in self.successors(node):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    result.append(neighbor)
+                    dfs_visit(neighbor)
+
+        dfs_visit(start)
+        return result
+
+
+class DAG(TraversableDigraph):
+    """Directed Acyclic Graph (DAG) with topological sorting and cycle detection."""
+
+    def __init__(self):
+        super().__init__()
+
+    def _detect_cycle(self):
+        """Detect if the graph contains a cycle (DFS-based)."""
+        visited = set()
+        rec_stack = set()
+
+        def dfs(node):
+            visited.add(node)
+            rec_stack.add(node)
+            for neighbor in self.successors(node):
+                if neighbor not in visited and dfs(neighbor):
+                    return True
+                elif neighbor in rec_stack:
+                    return True
+            rec_stack.remove(node)
+            return False
+
+        for n in self.nodes:
+            if n not in visited:
+                if dfs(n):
+                    return True
+        return False
+
+    def add_edge(self, src, dest, edge_weight=1):
+        """Add an edge and prevent cycles."""
+        super().add_edge(src, dest, edge_weight)
+        if self._detect_cycle():
+            # Remove the edge that caused the cycle
+            del self.edges[src][dest]
+            raise ValueError("Cycle detected — edge addition aborted.")
 
     def top_sort(self):
-        """Return a topologically sorted list of nodes using Kahn's algorithm."""
+        """Topological sorting using Kahn's algorithm."""
         in_degree = {u: 0 for u in self.nodes}
 
-        # Compute in-degrees
+        # Compute in-degree for each node
         for u in self.edges:
             for v in self.edges[u]:
                 in_degree[v] += 1
 
-        # Initialize queue with nodes that have zero in-degree
         queue = deque([u for u in self.nodes if in_degree[u] == 0])
         topo_order = []
 
         while queue:
             u = queue.popleft()
             topo_order.append(u)
-            for v in self.edges.get(u, []):
+            for v in self.edges[u]:
                 in_degree[v] -= 1
                 if in_degree[v] == 0:
                     queue.append(v)
@@ -47,124 +149,3 @@ class SortableDigraph:
             raise ValueError("Graph has at least one cycle; cannot topologically sort.")
 
         return topo_order
-
-    def __str__(self):
-        """String representation of the graph."""
-        result = []
-        for src in self.edges:
-            for dest in self.edges[src]:
-                result.append(f"{src} -> {dest}")
-        return "\n".join(result)
-
-
-class TraversableDigraph(SortableDigraph):
-    """Directed graph that supports DFS and BFS traversals."""
-    
-    def dfs(self, start=None):
-        """
-        Perform depth-first search traversal of the digraph.
-        Yields nodes in DFS order.
-        """
-        visited = set()
-        
-        # If no start node specified, use all nodes as potential starting points
-        if start is not None:
-            nodes_to_visit = [start]
-        else:
-            nodes_to_visit = list(self.nodes.keys())
-        
-        for node in nodes_to_visit:
-            if node not in visited:
-                stack = [node]
-                visited.add(node)
-                
-                while stack:
-                    current = stack.pop()
-                    yield current
-                    
-                    # Push neighbors in reverse order to maintain DFS semantics
-                    for neighbor in reversed(self.edges.get(current, [])):
-                        if neighbor not in visited:
-                            visited.add(neighbor)
-                            stack.append(neighbor)
-    
-    def bfs(self, start=None):
-        """
-        Perform breadth-first search traversal of the digraph.
-        Yields nodes in BFS order.
-        """
-        visited = set()
-        
-        # If no start node specified, use all nodes as potential starting points
-        if start is not None:
-            nodes_to_visit = [start]
-        else:
-            nodes_to_visit = list(self.nodes.keys())
-        
-        for node in nodes_to_visit:
-            if node not in visited:
-                queue = deque([node])
-                visited.add(node)
-                
-                while queue:
-                    current = queue.popleft()
-                    yield current
-                    
-                    for neighbor in self.edges.get(current, []):
-                        if neighbor not in visited:
-                            visited.add(neighbor)
-                            queue.append(neighbor)
-
-
-class DAG(TraversableDigraph):
-    """
-    Directed Acyclic Graph that prevents cycles when adding edges.
-    """
-    
-    def add_edge(self, src, dest):
-        """
-        Add a directed edge from src to dest, ensuring no cycles are created.
-        Raises ValueError if adding the edge would create a cycle.
-        """
-        if src not in self.nodes:
-            self.add_node(src)
-        if dest not in self.nodes:
-            self.add_node(dest)
-        
-        # Check if adding edge would create a cycle
-        if self._would_create_cycle(src, dest):
-            raise ValueError(f"Adding edge {src} -> {dest} would create a cycle")
-        
-        # Add the edge if safe
-        self.edges[src].append(dest)
-    
-    def _would_create_cycle(self, src, dest):
-        """
-        Check if adding an edge from src to dest would create a cycle.
-        Returns True if a path already exists from dest to src.
-        """
-        # If src and dest are the same, it's definitely a cycle
-        if src == dest:
-            return True
-        
-        # Use BFS to check if there's a path from dest to src
-        visited = set()
-        queue = deque([dest])
-        visited.add(dest)
-        
-        while queue:
-            current = queue.popleft()
-            
-            # If we can reach src from dest, adding src->dest creates a cycle
-            if current == src:
-                return True
-            
-            for neighbor in self.edges.get(current, []):
-                if neighbor not in visited:
-                    visited.add(neighbor)
-                    queue.append(neighbor)
-        
-        return False
-
-
-
