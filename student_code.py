@@ -3,89 +3,73 @@
 Implements SortableDigraph, TraversableDigraph, and DAG classes.
 Each class supports directed graph operations, traversal, and topological sorting.
 """
-
 from collections import deque
 
-
 class SortableDigraph:
-    """A versatile directed graph with nodes and weighted edges."""
-
+    """Base class providing basic graph structure and topological sort"""
     def __init__(self):
-        """Initialize the graph with empty node and edge sets."""
-        self.nodes = {}  # {node_id: value}
-        self.edges = {}  # {src: {dest: weight}}
+        self.adj = {}  # adjacency list
+        self.node_data = {}  # store node data
+        self.edge_weights = {}  # store edge weights
 
-    def add_node(self, node_id, value=None):
-        """Add a node to the graph if not already present."""
-        if node_id not in self.nodes:
-            self.nodes[node_id] = value
-            self.edges[node_id] = {}
+    def add_node(self, node, data=None):
+        """Add a node to the graph"""
+        if node not in self.adj:
+            self.adj[node] = []
+            self.node_data[node] = data
 
-    def add_edge(self, src, dest, edge_weight=1):
-        """Add a directed edge from src to dest with an optional weight."""
-        if src not in self.nodes:
-            self.add_node(src)
-        if dest not in self.nodes:
-            self.add_node(dest)
-        self.edges[src][dest] = edge_weight
+    def add_edge(self, u, v, edge_weight=None):
+        """Add an edge from u to v"""
+        self.add_node(u)
+        self.add_node(v)
+        self.adj[u].append(v)
+        self.edge_weights[(u, v)] = edge_weight
 
-    def get_nodes(self):
-        """Return a list of all node IDs."""
-        return list(self.nodes.keys())
+    def get_node_value(self, node):
+        """Get the data associated with a node"""
+        return self.node_data.get(node)
 
-    def get_node_value(self, node_id):
-        """Return the stored value for a node."""
-        return self.nodes.get(node_id)
+    def get_edge_weight(self, u, v):
+        """Get the weight of an edge"""
+        return self.edge_weights.get((u, v))
 
-    def get_edge_weight(self, src, dest):
-        """Return the weight of the edge from src to dest."""
-        return self.edges.get(src, {}).get(dest)
-
-    def successors(self, node_id):
-        """Return a list of successors (outgoing neighbors) for a node."""
-        return list(self.edges.get(node_id, {}).keys())
-
-    def predecessors(self, node_id):
-        """Return a list of predecessors (incoming neighbors) for a node."""
-        return [src for src in self.edges if node_id in self.edges[src]]
-
-    def __str__(self):
-        """Return a human-readable string representation of the graph."""
+    def topsort(self):
+        """Topological sort"""
+        visited = set()
         result = []
-        for src, dests in self.edges.items():
-            for dest, weight in dests.items():
-                result.append(f"{src} -> {dest} ({weight})")
-        return "\n".join(result)
+
+        def visit(node):
+            if node in visited:
+                return
+            visited.add(node)
+            for neighbor in self.adj.get(node, []):
+                visit(neighbor)
+            result.append(node)
+
+        for node in list(self.adj.keys()):
+            visit(node)
+
+        return result[::-1]
 
     def top_sort(self):
-        """Return a topologically sorted list of nodes using Kahn's algorithm."""
-        in_degree = {u: 0 for u in self.nodes}
+        """Alias for topsort to match test requirements"""
+        return self.topsort()
 
-        # Compute in-degrees
-        for u in self.edges:
-            for v in self.edges[u]:
-                in_degree[v] += 1
+    def successors(self, node):
+        """Get all successors of a node"""
+        return self.adj.get(node, []).copy()
 
-        # Initialize queue with zero in-degree nodes
-        queue = deque([u for u in self.nodes if in_degree[u] == 0])
-        topo_order = []
+    def predecessors(self, node):
+        """Get all predecessors of a node"""
+        preds = []
+        for u, neighbors in self.adj.items():
+            if node in neighbors:
+                preds.append(u)
+        return preds
 
-        while queue:
-            u = queue.popleft()
-            topo_order.append(u)
-            for v in self.edges.get(u, []):
-                in_degree[v] -= 1
-                if in_degree[v] == 0:
-                    queue.append(v)
-
-        if len(topo_order) != len(self.nodes):
-            raise ValueError(
-                "Graph has at least one cycle; cannot topologically sort."
-            )
-
-        return topo_order
-
-
+    def get_nodes(self):
+        """Get all nodes in the graph"""
+        return list(self.adj.keys())
 class TraversableDigraph(SortableDigraph):
     """A directed graph with traversal methods (BFS and DFS)."""
 
@@ -145,7 +129,7 @@ class DAG(TraversableDigraph):
             rec_stack.remove(node)
             return False
 
-        for node in self.nodes:
+        for node in self.adj:  # Iterate over keys of self.adj
             if node not in visited and dfs_cycle(node):
                 return True
         return False
@@ -154,36 +138,37 @@ class DAG(TraversableDigraph):
         """Add an edge and prevent cycles."""
         super().add_edge(src, dest, edge_weight)
         if self._detect_cycle():
-            del self.edges[src][dest]
+            del self.edge_weights[(src, dest)]  # Correctly delete from edge_weights
+            self.adj[src].remove(dest) # Also remove the edge from the adjacency list
             raise ValueError("Cycle detected — edge addition aborted.")
 
     def top_sort(self):
         """Perform topological sorting using Kahn's algorithm."""
-        in_degree = {u: 0 for u in self.nodes}
+        in_degree = {u: 0 for u in self.adj} # Use self.adj keys for nodes
 
         # Compute in-degree for each node
-        for src, dests in self.edges.items():
+        for src, dests in self.adj.items(): # Iterate over self.adj
             for dest in dests:
                 in_degree[dest] += 1
 
-        queue = deque([u for u in self.nodes if in_degree[u] == 0])
+        queue = deque([u for u in self.adj if in_degree.get(u, 0) == 0]) # Use self.adj keys for nodes, handle nodes with no incoming edges
         topo_order = []
 
         while queue:
             u = queue.popleft()
             topo_order.append(u)
-            for v in self.edges[u]:
+            for v in self.adj.get(u, []): # Iterate over neighbors from self.adj
                 in_degree[v] -= 1
                 if in_degree[v] == 0:
                     queue.append(v)
 
-        if len(topo_order) != len(self.nodes):
+        if len(topo_order) != len(self.adj): # Compare with number of nodes in self.adj
             raise ValueError(
                 "Graph has at least one cycle; cannot topologically sort."
             )
 
         return topo_order
-        # Test code
+# Test code
 if __name__ == "__main__":
     print("=== Testing TraversableDigraph ===")
     g = TraversableDigraph()
